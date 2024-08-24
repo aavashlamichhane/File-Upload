@@ -4,4 +4,4 @@ Create an 'uploads' directory in root of project and a 'security.js' file that h
 
 Use the hashPassword.js to generate the password hash and secureKeyGen.js to generate a random secret key.
 
-The site is experimental. Vulnerabilities can be exploited.
+The site is experimental. Vulnerabilities may be exploited.
