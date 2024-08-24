@@ -8,7 +8,7 @@ const session = require('express-session');
 const app = express();
 
 const UPLOAD_DIR = path.join(__dirname,'uploads');
-const MAX_SIZE = 4*1024*1024*1024; //4GB in bytes, represents the limit of the uploads folder.
+const MAX_SIZE = 3*1024*1024*1024; //GB in bytes, represents the limit of the uploads folder.
 
 const {middlewarekey, hashedPassword} = require('./security');
 
