@@ -57,7 +57,7 @@
             <div id="file-info" class="text-sm text-gray-600 mt-4"></div>
 
             <!-- Progress Bar -->
-            <div class="progress-container mt-4 h-5 rounded-md bg-gray-200">
+            <div id ="progress-container" class="progress-container mt-4 h-5 rounded-md bg-gray-200 hidden">
                 <div id="progress-bar" class="progress-bar"></div>
             </div>
 
@@ -102,7 +102,7 @@
         const folderInput = document.getElementById('folder-input');
         const fileInfo = document.getElementById('file-info');
         const progressBar = document.getElementById('progress-bar');
-        // const uploadForm = document.getElementById('upload-form');
+        const progressContainer = document.getElementById('progress-container');
 
         function handleFiles(files) {
             fileInfo.innerHTML = '';  // Clear previous file info
@@ -115,7 +115,7 @@
 
                 // Check if any file exceeds 70MB
                 if (file.size > 512 * 1024 * 1024) {
-                    alert(`Error: ${file.name} is larger than 512   MB and cannot be uploaded.`);
+                    alert(`Error: ${file.name} is larger than 512MB and cannot be uploaded.`);
                     error = true;
                     fileInput.value = '';  // Clear the input
                     folderInput.value = '';  // Clear the folder input
@@ -166,6 +166,7 @@
 
                 xhr.upload.onprogress = function (event) {
                     if (event.lengthComputable) {
+                        progressContainer.classList.remove('hidden');
                         const percentComplete = (event.loaded / event.total) * 100;
                         progressBar.style.width = percentComplete + '%';
                         progressBar.textContent = Math.floor(percentComplete) + '%';
@@ -176,6 +177,13 @@
                     if (xhr.status === 200) {
                         progressBar.style.width = '100%';
                         progressBar.textContent = 'Upload Complete';
+
+                        setTimeout(() => {
+                            progressBar.style.width = '0%';
+                            progressBar.textContent = '';
+                            progressContainer.classList.add('hidden');
+                        }, 3000);
+                    
                     } else {
                         progressBar.style.width = '100%';
                         progressBar.style.backgroundColor = '#f44336';

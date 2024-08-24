@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const path = require('path');
 const session = require('express-session');
+const app = express();
 
 // Set up storage destination and filename
 const storage = multer.diskStorage({
@@ -11,14 +12,14 @@ const storage = multer.diskStorage({
         cb(null, 'uploads');  // Directory where files will be saved
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + file.originalname); // Filename to save
+        cb(null,  Date.now() + '-' + file.originalname ); // Filename to save
     }
 });
 
 const {middlewarekey, hashedPassword} = require('./security');
 
 app.use(session({
-    secret: middlewarekey, // Replace with a strong secret key
+    secret: middlewarekey,
     resave: false,
     saveUninitialized: true,
     cookie: { secure: false } // Set to true if using HTTPS
@@ -27,7 +28,7 @@ app.use(session({
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 512 * 1024 * 1024  // Maximum single file size (70MB)
+        fileSize: 512 * 1024 * 1024  // Maximum single file size (512MB)
     },
     fileFilter: (req, file, cb) => {
         cb(null, true);
@@ -36,13 +37,11 @@ const upload = multer({
 
 function checkTotalSize(req, res, next) {
     let totalSize = req.files.reduce((total, file) => total + file.size, 0);
-    if (totalSize > 2048 * 1024 * 1024) {  // Check total size (100MB)
+    if (totalSize > 2048 * 1024 * 1024) {  // Check total size (2GB)
         return res.status(400).send('Error: Total upload size exceeds 2GB.');
     }
     next();
 }
-
-const app = express();
 
 // Serve static files from the "public" directory
 app.use(express.static('public'));
@@ -57,8 +56,10 @@ app.post('/authenticate', async (req, res) => {
     if (isMatch) {
         req.session.authenticated = true;
         res.status(200).json({ success: true });
+        console.log('Login Successful.');
     } else {
         res.status(401).json({ success: false, message: 'Incorrect password' });
+        console.log(`Attemped Login. Password used: "${password}"`);
     }
 });
 
