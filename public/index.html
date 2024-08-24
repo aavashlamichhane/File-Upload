@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File and Folder Upload</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles */
+        .progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 20px;
+            width: 0%;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="bg-white shadow-md rounded-lg p-8 max-w-md w-full">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">Upload Files or Folders</h1>
+
+        <!-- Password Authentication Form -->
+        <form id="auth-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Enter Password</label>
+                <input type="password" id="password" class="block w-full text-sm text-gray-500 px-4 py-2 border rounded-md focus:outline-none">
+            </div>
+            <button type="submit" id="auth-btn"
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 transition duration-300">Authenticate</button>
+            <div id="auth-error" class="text-red-500 text-sm mt-2 hidden">Incorrect password. Please try again.</div>
+        </form>
+
+        <!-- Upload Form -->
+        <form id="upload-form" class="space-y-6 mt-6 hidden">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Choose Files</label>
+                <input type="file" name="files" id="file-input" multiple
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 focus:outline-none">
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Or Choose a Folder</label>
+                <input type="file" name="folder" id="folder-input" webkitdirectory
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 focus:outline-none">
+            </div>
+
+            <div id="file-info" class="text-sm text-gray-600 mt-4"></div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container mt-4 h-5 rounded-md bg-gray-200">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 transition duration-300">Upload</button>
+        </form>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-sm text-gray-500">
+            © 2024 FileUploader Alpha by Vamp. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        const authForm = document.getElementById('auth-form');
+        const uploadForm = document.getElementById('upload-form');
+        const authError = document.getElementById('auth-error');
+
+        authForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/authenticate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                authForm.classList.add('hidden');
+                uploadForm.classList.remove('hidden');
+            } else {
+                authError.classList.remove('hidden');
+            }
+        });
+
+
+        const fileInput = document.getElementById('file-input');
+        const folderInput = document.getElementById('folder-input');
+        const fileInfo = document.getElementById('file-info');
+        const progressBar = document.getElementById('progress-bar');
+        // const uploadForm = document.getElementById('upload-form');
+
+        function handleFiles(files) {
+            fileInfo.innerHTML = '';  // Clear previous file info
+            let totalSize = 0;
+            let error = false;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                totalSize += file.size;
+
+                // Check if any file exceeds 70MB
+                if (file.size > 512 * 1024 * 1024) {
+                    alert(`Error: ${file.name} is larger than 512   MB and cannot be uploaded.`);
+                    error = true;
+                    fileInput.value = '';  // Clear the input
+                    folderInput.value = '';  // Clear the folder input
+                    break;
+                }
+
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.textContent = `Name: ${file.webkitRelativePath || file.name}, Size: ${(file.size / 1024).toFixed(2)} KB`;
+                fileInfo.appendChild(fileItem);
+            }
+
+            // Check if total size exceeds 100MB
+            if (totalSize > 2048 * 1024 * 1024) {
+                alert('Error: The total size of selected files exceeds 2GB and cannot be uploaded.');
+                error = true;
+                fileInput.value = '';  // Clear the input
+                folderInput.value = '';  // Clear the folder input
+            }
+
+            if (error) {
+                fileInfo.innerHTML = '';  // Clear file info if there's an error
+            }
+        }
+
+        fileInput.addEventListener('change', (event) => {
+            handleFiles(event.target.files);
+            folderInput.value = '';  // Clear folder input when files are selected
+        });
+
+        folderInput.addEventListener('change', (event) => {
+            handleFiles(event.target.files);
+            fileInput.value = '';  // Clear file input when a folder is selected
+        });
+
+        uploadForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const files = fileInput.files.length > 0 ? fileInput.files : folderInput.files;
+
+            if (files.length > 0) {
+                const formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/upload', true);
+
+                xhr.upload.onprogress = function (event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.textContent = Math.floor(percentComplete) + '%';
+                    }
+                };
+
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = 'Upload Complete';
+                    } else {
+                        progressBar.style.width = '100%';
+                        progressBar.style.backgroundColor = '#f44336';
+                        progressBar.textContent = 'Upload Failed';
+                    }
+                };
+
+                xhr.send(formData);
+            }
+        });
+    </script>
+</body>
+</html>
