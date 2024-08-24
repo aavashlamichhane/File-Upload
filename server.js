@@ -3,20 +3,42 @@ const multer = require('multer');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
 const app = express();
+
+const UPLOAD_DIR = path.join(__dirname,'uploads');
+const MAX_SIZE = 4*1024*1024*1024; //4GB in bytes, represents the limit of the uploads folder.
+
+const {middlewarekey, hashedPassword} = require('./security');
 
 // Set up storage destination and filename
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads');  // Directory where files will be saved
+        cb(null, UPLOAD_DIR);  // Directory where files will be saved
     },
     filename: (req, file, cb) => {
         cb(null,  Date.now() + '-' + file.originalname ); // Filename to save
     }
 });
 
-const {middlewarekey, hashedPassword} = require('./security');
+async function getDirSize(dirPath){
+    let size = 0;
+
+    const files = await fs.promises.readdir(dirPath);
+
+    for(const file of files){
+        const filePath = path.join(dirPath,file);
+        const stats = await fs.promises.stat(filePath);
+
+        if(stats.isFile()){
+            size+=stats.size;
+        } else if(stats.isDirectory()){
+            size += await getDirSize(filePath);
+        }
+    }
+    return size;
+}
 
 app.use(session({
     secret: middlewarekey,
@@ -35,12 +57,22 @@ const upload = multer({
     }
 }).array('files');
 
-function checkTotalSize(req, res, next) {
-    let totalSize = req.files.reduce((total, file) => total + file.size, 0);
-    if (totalSize > 2048 * 1024 * 1024) {  // Check total size (2GB)
-        return res.status(400).send({ message: 'Total upload size exceeds 2GB.' });
+async function checkTotalSize(req, res, next) {
+    try{
+        const size = await getDirSize(UPLOAD_DIR);
+        let reqSize = req.files.reduce((total, file) => total + file.size, 0);
+        if(size>=MAX_SIZE){
+            return res.status(403).send({message:'Upload directory full. Cannot upload until space is freed.'});
+        } else if (size+reqSize>=MAX_SIZE){
+            return res.status(403).send({message:'Processing request exceeds upload directory size limit. Reduce the size of the request, or free space in upload directory.'});
+        } else if (reqSize > 2048 * 1024 * 1024) {
+            return res.status(400).send({ message: 'Request size exceeds 2GB.' });
+        }
+        next();
+    } catch(err) {
+        console.error('Error processing upload: ',err);
+        return res.status(500).send({message:`${err}`});
     }
-    next();
 }
 
 // Serve static files from the "public" directory
@@ -72,14 +104,14 @@ function checkAuthentication(req, res, next) {
 }
 
 // Endpoint to handle file uploads
-app.post('/upload', checkAuthentication, (req, res) => {
-    upload(req, res, (err) => {
+app.post('/upload', checkAuthentication, async (req, res) => {
+    upload(req, res, async (err) => {
         if (err) {
             return res.status(400).send({ message: `${err.message}` });
         }
-        checkTotalSize(req, res, () => {
+        await checkTotalSize(req, res, () => {
             console.log('Files uploaded:', req.files);
-            res.send('Files uploaded successfully');
+            res.status(200).send('Files uploaded successfully');
         });
     });
 });
