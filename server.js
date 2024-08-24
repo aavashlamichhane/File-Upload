@@ -38,7 +38,7 @@ const upload = multer({
 function checkTotalSize(req, res, next) {
     let totalSize = req.files.reduce((total, file) => total + file.size, 0);
     if (totalSize > 2048 * 1024 * 1024) {  // Check total size (2GB)
-        return res.status(400).send('Error: Total upload size exceeds 2GB.');
+        return res.status(400).send({ message: 'Total upload size exceeds 2GB.' });
     }
     next();
 }
@@ -67,7 +67,7 @@ function checkAuthentication(req, res, next) {
     if (req.session.authenticated) {
         next();
     } else {
-        res.status(401).json({ success: false, message: 'Unauthorized access' });
+        res.status(401).json({ success: false, message: 'Unauthorized access, reload and authenticate.' });
     }
 }
 
@@ -75,7 +75,7 @@ function checkAuthentication(req, res, next) {
 app.post('/upload', checkAuthentication, (req, res) => {
     upload(req, res, (err) => {
         if (err) {
-            return res.status(400).send(`Error: ${err.message}`);
+            return res.status(400).send({ message: `${err.message}` });
         }
         checkTotalSize(req, res, () => {
             console.log('Files uploaded:', req.files);
