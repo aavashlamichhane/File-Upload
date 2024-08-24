@@ -186,6 +186,7 @@
 
                 xhr.upload.onprogress = function (event) {
                     if (event.lengthComputable) {
+                        progressBar.style.backgroundColor = '#4caf50';
                         progressContainer.classList.remove('hidden');
                         const percentComplete = (event.loaded / event.total) * 100;
                         progressBar.style.width = percentComplete + '%';
@@ -197,6 +198,7 @@
                     if (xhr.status === 200) {
                         errorMessage.classList.add('hidden');
                         progressBar.style.width = '100%';
+                        // progressBar.style.backgroundColor = '#4caf50';
                         progressBar.textContent = 'Upload Complete';
 
                         folderInput.value='';

@@ -11,6 +11,7 @@ const UPLOAD_DIR = path.join(__dirname,'uploads');
 const MAX_SIZE = 3*1024*1024*1024; //GB in bytes, represents the limit of the uploads directory.
 const MAX_SINGLE = 512*1024*1024;
 const MAX_NUM = 200; //Max number of files possible in upload directory.
+const MAX_REQ_SIZE = 1*1024*1024*1024;
 
 const {middlewarekey, hashedPassword} = require('./security');
 
@@ -57,8 +58,33 @@ const upload = multer({
     limits: {
         fileSize: MAX_SINGLE  // Maximum single file size (512MB)
     },
-    fileFilter: (req, file, cb) => {
-        cb(null, true);
+    fileFilter: async (req, file, cb) => {
+        try{
+            const {size,num} = await getDirStat(UPLOAD_DIR);
+            const {reqSize,reqNum} = req.files.reduce((total, file) => {
+                total.reqSize += file.size;
+                total.reqNum +=1;
+                return total;
+                }, {reqSize:0,reqNum:0});
+            if(size>=MAX_SIZE){
+                return cb(new Error('Upload directory full. Cannot upload until space is freed.'));
+            } else if (size+reqSize>=MAX_SIZE){
+                return cb(new Error(`Processing request exceeds upload directory size limit. Can upload ${(MAX_SIZE - size) / (1024 * 1024)}MB only.`));
+            } else if (reqSize > MAX_REQ_SIZE) {
+                return cb(new Error(`Request size exceeds ${(MAX_REQ_SIZE / (1024 * 1024 * 1024))}GB.`));
+            } else if (num>MAX_NUM){
+                return cb(new Error('Upload directory has too many files. Cannot upload until number of files reduced.'));
+            } else if (num+reqNum>MAX_NUM){
+                return cb(new Error(`Processing request exceeds number of files limit. Can upload ${(MAX_NUM - num)} files only.`));
+            }else{
+                cb(null, true);
+            }
+        } catch(err) {
+            console.error('Error processing upload: ',err);
+            // return res.status(500).send({message:`${err}`});
+            cb(err);
+        }
+        ;
     }
 }).array('files');
 
@@ -80,8 +106,9 @@ async function checkTotalSize(req, res, next) {
             return res.status(403).send({message:'Upload directory has too many files. Cannot upload until number of files reduced.'});
         } else if (num+reqNum>MAX_NUM){
             return res.status(403).send({message:`Processing request exceeds number of files limit. Can upload ${MAX_NUM-num} files only.`});
-        }
+        }else{
         next();
+        }
     } catch(err) {
         console.error('Error processing upload: ',err);
         return res.status(500).send({message:`${err}`});
@@ -122,10 +149,6 @@ app.post('/upload', checkAuthentication, async (req, res) => {
         if (err) {
             return res.status(400).send({ message: `${err.message}` });
         }
-        await checkTotalSize(req, res, () => {
-            console.log('Files uploaded:', req.files);
-            res.status(200).send('Files uploaded successfully');
-        });
     });
 });
 
