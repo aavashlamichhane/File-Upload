@@ -107,6 +107,10 @@
         const progressContainer = document.getElementById('progress-container');
         const errorMessage = document.getElementById('error-message');
 
+        const MAX_UPLOAD = 2*1024*1024*1024;
+        const MAX_SINGLE = 512*1024*1024;
+        const MAX_NUM = 200;
+
         function handleFiles(files) {
             fileInfo.innerHTML = '';  // Clear previous file info
             let totalSize = 0;
@@ -118,8 +122,8 @@
                 totalSize += file.size;
 
                 // Check if any file exceeds 512MB
-                if (file.size > 512 * 1024 * 1024) {
-                    alert(`Error: ${file.name} is larger than 512MB and cannot be uploaded.`);
+                if (file.size > MAX_SINGLE) {
+                    alert(`Error: ${file.name} is larger than ${(MAX_SINGLE/(1024*1024))}MB and cannot be uploaded.`);
                     error = true;
                     fileInput.value = '';  // Clear the input
                     folderInput.value = '';  // Clear the folder input
@@ -132,14 +136,19 @@
                 fileInfo.appendChild(fileItem);
             }
 
-            // Check if total size exceeds 100MB
-            if (totalSize > 2048 * 1024 * 1024) {
-                alert('Error: The total size of selected files exceeds 2GB and cannot be uploaded.');
+            // Check if total size exceeds 2GB
+            if (totalSize > MAX_UPLOAD) {
+                alert(`Error: The total size of selected files exceeds ${(MAX_UPLOAD/(1024*1024*1024))}GB and cannot be uploaded.`);
                 error = true;
                 fileInput.value = '';  // Clear the input
                 folderInput.value = '';  // Clear the folder input
             }
-
+            if(files.length>MAX_NUM){
+                alert(`Error: The number of files exceed ${MAX_NUM} and cannot process the upload.`);
+                error = true;
+                fileInput.value = '';  // Clear the input
+                folderInput.value = '';  // Clear the folder input
+            }
             if (error) {
                 fileInfo.innerHTML = '';  // Clear file info if there's an error
                 fileInfo.classList.add('hidden');

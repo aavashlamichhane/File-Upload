@@ -8,7 +8,9 @@ const session = require('express-session');
 const app = express();
 
 const UPLOAD_DIR = path.join(__dirname,'uploads');
-const MAX_SIZE = 3*1024*1024*1024; //GB in bytes, represents the limit of the uploads folder.
+const MAX_SIZE = 3*1024*1024*1024; //GB in bytes, represents the limit of the uploads directory.
+const MAX_SINGLE = 512*1024*1024;
+const MAX_NUM = 200; //Max number of files possible in upload directory.
 
 const {middlewarekey, hashedPassword} = require('./security');
 
@@ -22,9 +24,9 @@ const storage = multer.diskStorage({
     }
 });
 
-async function getDirSize(dirPath){
+async function getDirStat(dirPath){
     let size = 0;
-
+    let num = 0;
     const files = await fs.promises.readdir(dirPath);
 
     for(const file of files){
@@ -33,11 +35,14 @@ async function getDirSize(dirPath){
 
         if(stats.isFile()){
             size+=stats.size;
+            num+=1;
         } else if(stats.isDirectory()){
-            size += await getDirSize(filePath);
+            const {size:s, num:n} = await getDirStat(filePath);
+            size+=s;
+            num+=n;
         }
     }
-    return size;
+    return {size, num};
 }
 
 app.use(session({
@@ -50,7 +55,7 @@ app.use(session({
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 512 * 1024 * 1024  // Maximum single file size (512MB)
+        fileSize: MAX_SINGLE  // Maximum single file size (512MB)
     },
     fileFilter: (req, file, cb) => {
         cb(null, true);
@@ -59,14 +64,22 @@ const upload = multer({
 
 async function checkTotalSize(req, res, next) {
     try{
-        const size = await getDirSize(UPLOAD_DIR);
-        let reqSize = req.files.reduce((total, file) => total + file.size, 0);
+        const {size,num} = await getDirStat(UPLOAD_DIR);
+        const {reqSize,reqNum} = req.files.reduce((total, file) => {
+            total.reqSize += file.size;
+            total.reqNum +=1;
+            return total;
+            }, {reqSize:0,reqNum:0});
         if(size>=MAX_SIZE){
             return res.status(403).send({message:'Upload directory full. Cannot upload until space is freed.'});
         } else if (size+reqSize>=MAX_SIZE){
-            return res.status(403).send({message:'Processing request exceeds upload directory size limit. Reduce the size of the request, or free space in upload directory.'});
-        } else if (reqSize > 2048 * 1024 * 1024) {
-            return res.status(400).send({ message: 'Request size exceeds 2GB.' });
+            return res.status(403).send({message:`Processing request exceeds upload directory size limit. Can upload ${(MAX_SIZE-size)/(1024*1024)}MB only.`});
+        } else if (reqSize > MAX_SIZE) {
+            return res.status(400).send({ message: `Request size exceeds ${(MAX_SIZE/(1024*1024*1024))}GB.` });
+        } else if (num>MAX_NUM){
+            return res.status(403).send({message:'Upload directory has too many files. Cannot upload until number of files reduced.'});
+        } else if (num+reqNum>MAX_NUM){
+            return res.status(403).send({message:`Processing request exceeds number of files limit. Can upload ${MAX_NUM-num} files only.`});
         }
         next();
     } catch(err) {
