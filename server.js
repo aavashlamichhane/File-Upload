@@ -119,8 +119,6 @@ async function checkTotalSize(req, res, next) {
     }
 }
 
-// Serve static files from the "public" directory
-app.use(express.static('public'));
 app.use(bodyParser.json());
 
 app.post('/authenticate', async (req, res) => {
