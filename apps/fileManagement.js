@@ -10,29 +10,13 @@ const {
     MAX_REQ_SIZE
 } = require('../constants/constants.js');
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOAD_DIR);  // Directory where files will be saved
-    },
-    filename: (req, file, cb) => {
-        cb(null,  Date.now() + '-' + file.originalname ); //File name generation
-    }
-});
-
 const memStorage = multer.memoryStorage();
 
-const upload = multer({
-    storage: storage,
+const memUpload = multer({
+    storage: memStorage,
     limits: {
         fileSize: MAX_SINGLE
-    },
-    fileFilter: async (req, file, cb) => {
-        cb(null, true);
     }
-});
-
-const memUpload = multer({
-    storage: memStorage
 });
 
 function saveFiles(req,res,next){
@@ -54,7 +38,6 @@ function saveFiles(req,res,next){
 }
 
 module.exports = {
-    upload,
     memUpload,
     saveFiles,
 }
