@@ -15,6 +15,10 @@ const MAX_REQ_SIZE = 1*1024*1024*1024;
 
 const {middlewarekey, hashedPassword} = require('./security');
 
+app.use(express.static(path.join(__dirname,'src')));
+app.use(express.static(path.join(__dirname, 'public')));
+
+
 // Set up storage destination and filename
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
