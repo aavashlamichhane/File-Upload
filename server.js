@@ -5,7 +5,10 @@ const path = require('path');
 const session = require('express-session');
 const app = express();
 
+require('dotenv').config();
+
 const {middlewarekey, hashedPassword} = require('./security');
+const pool = require('./apps/db.js');
 
 app.use(express.static(path.join(__dirname,'src')));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -43,6 +46,11 @@ app.post('/authenticate', async (req, res) => {
 app.post('/upload', auth.checkAuthentication,fileMan.memUpload.array('files'),dirStat.checkTotalSize,fileMan.saveFiles, (req, res) => {
     console.log('File Upload Successful. Uploaded: ', req.files);
     res.status(200).send({message: 'Upload Successful.'});
+});
+
+app.post('/register', async (req,res) => {
+    const {username, password} = req.body;
+
 });
 
 // Start the server
