@@ -15,6 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const fileMan = require('./apps/fileManagement.js');
 const dirStat = require('./apps/dirStats.js');
+const { specialError } = require('./apps/dirStats.js');
 const auth = require('./apps/auth.js');
 
 app.use(session({
@@ -26,32 +27,17 @@ app.use(session({
 
 app.use(bodyParser.json());
 
-app.post('/authenticate', async (req, res) => {
-    const { password } = req.body;
-
-    // Check if the provided password matches the stored hashed password
-    const isMatch = await bcrypt.compare(password, hashedPassword);
-
-    if (isMatch) {
-        req.session.authenticated = true;
-        res.status(200).json({ success: true });
-        console.log('Login Successful.');
-    } else {
-        res.status(401).json({ success: false, message: 'Incorrect password' });
-        console.log(`Attemped Login. Password used: "${password}"`);
-    }
-});
-
 // Endpoint to handle file uploads
 app.post('/upload', auth.checkAuthentication,fileMan.memUpload.array('files'),dirStat.checkTotalSize,fileMan.saveFiles, (req, res) => {
     console.log('File Upload Successful. Uploaded: ', req.files);
     res.status(200).send({message: 'Upload Successful.'});
 });
 
-app.post('/register', async (req,res) => {
-    const {username, password} = req.body;
+app.post('/register', auth.registerUser);
 
-});
+app.post('/logout',auth.checkAuthentication,auth.logout);
+
+app.post('/authenticate',auth.loginUser);
 
 // Start the server
 const PORT = 3000;

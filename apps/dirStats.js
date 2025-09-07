@@ -73,5 +73,7 @@ async function checkTotalSize(req, res, next) {
 }
 
 module.exports= {
-    checkTotalSize: checkTotalSize,
+    checkTotalSize,
+    specialError
 };
+
